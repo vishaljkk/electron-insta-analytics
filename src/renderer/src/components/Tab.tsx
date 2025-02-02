@@ -22,9 +22,6 @@ export const Tab = ({ item, onClick, onRemove, isSelected, showSeparator }: Prop
       }}
       animate={{
         opacity: 1,
-        style: {
-          backgroundColor: isSelected ? 'hsl(var(--primary))' : 'hsl(var(--background))'
-        },
         y: 0,
         transition: { duration: 0.1, ease: 'easeInOut' }
       }}

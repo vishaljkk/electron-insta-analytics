@@ -65,15 +65,6 @@ export function createToolbar(): Promise<WebContentsView | null> {
     toolbarView.webContents.on('did-fail-load', () => {
       return resolve(null)
     })
-
-    // Setting initial bounds
-    const newBounds = baseWindow.getBounds()
-    toolbarView.setBounds({
-      x: 0,
-      y: 0,
-      width: newBounds.width,
-      height: toolbarHeight
-    })
   })
 }
 
