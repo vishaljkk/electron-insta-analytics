@@ -10,6 +10,7 @@ declare global {
 
 export interface ITabsAPI {
   new: () => Promise<number>
+  newScrapper: (defaultUrl: string) => Promise<number>
   close: (id: number) => Promise<void>
   select: (id: number) => Promise<void>
   reorder: (tabIds: number[]) => Promise<void>

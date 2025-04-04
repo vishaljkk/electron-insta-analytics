@@ -1,5 +1,5 @@
 appId: com.electron.app
-productName: electron-chrome-tabs
+productName: electron-insta-analytics
 directories:
   buildResources: build
 files:
@@ -12,7 +12,7 @@ files:
 asarUnpack:
   - resources/**
 win:
-  executableName: electron-chrome-tabs
+  executableName: electron-insta-analytics
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}

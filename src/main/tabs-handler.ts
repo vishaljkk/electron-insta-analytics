@@ -5,10 +5,12 @@ import {
   getAllTabIds,
   getSelectedTabId,
   reorderTabs,
-  setSelectedTab
+  setSelectedTab,
+  addNewScrapper
 } from './tabs'
 export const initTabsIpcHandlers = () => {
   ipcMain.handle('tabs:new', () => addNewTab())
+  ipcMain.handle('tabs:newScrapper', (_, defaultUrl: string) => addNewScrapper(defaultUrl))
   ipcMain.handle('tabs:select', (_, id: number) => setSelectedTab(id))
   ipcMain.handle('tabs:getAllTabIds', () => getAllTabIds())
   ipcMain.handle('tabs:getSelectedTabId', () => getSelectedTabId())

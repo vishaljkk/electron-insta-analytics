@@ -8,12 +8,18 @@ import { getRootUrl } from './url-helpers'
 
 const tabs: WebContentsView[] = []
 let selectedTab: WebContentsView | null = null
+let tabExists = false; // Flag to track if a tab is already created
 
 /**
  * Creates and loads a new tab with the root URL.
  * @returns The ID of the new tab's web contents, or -1 if creation failed
  */
 export async function addNewTab() {
+  if (tabExists) {
+    tabExists = true
+    //console.log("A tab already exists. New tabs are not allowed.");
+    return;
+  }
   const mainWindow = getBaseWindow()
   if (mainWindow === null) {
     return
@@ -21,6 +27,22 @@ export async function addNewTab() {
 
   // load new content here
   const newTab = await loadTabContent(NavigationRoutes.root, { bringToFront: true })
+  if (newTab === null) return -1
+  return newTab.webContents.id
+}
+
+/**
+ * Creates and loads a new tab with the root URL.
+ * @returns The ID of the new tab's web contents, or -1 if creation failed
+ */
+export async function addNewScrapper(defaultUrl) {
+  const mainWindow = getBaseWindow()
+  if (mainWindow === null) {
+    return
+  }
+
+  // load new content here
+  const newTab = await loadScrappedContent(NavigationRoutes.root, { bringToFront: true }, defaultUrl)
   if (newTab === null) return -1
   return newTab.webContents.id
 }
@@ -52,6 +74,7 @@ export function loadTabContent(
         showContent(newContentView)
         saveTabs()
       }
+      // newContentView.webContents.openDevTools({ mode: 'detach' });
       resolve(newContentView)
     })
 
@@ -66,6 +89,165 @@ export function loadTabContent(
 
     tabs.push(newContentView)
     newContentView.webContents.loadURL(url)
+    
+  })
+}
+
+export function loadScrappedContent(
+  _path: string,
+  { bringToFront = false }: { bringToFront?: boolean } = {}, defaultUrl
+): Promise<WebContentsView | null> {
+  return new Promise((resolve) => {
+    const baseWindow = getBaseWindow()
+    if (baseWindow === null) return resolve(null)
+    const newContentView = new WebContentsView({
+      webPreferences: {
+        preload: join(__dirname, '../preload/index.js'),
+        sandbox: false
+      }
+    })
+
+    newContentView.setBackgroundColor('#292524')
+
+    // newContentView.webContents.on('did-finish-load', () => {
+    //   if (bringToFront) {
+    //     showContent(newContentView)
+    //     saveTabs()
+    //   }
+    //   resolve(newContentView)
+    // })
+
+    // newContentView.webContents.on('did-finish-load', async () => {
+    //   if (bringToFront) {
+    //     showContent(newContentView)
+    //     saveTabs()
+    //   }
+
+
+
+    //   // Try scraping data from the loaded page
+    //   try {
+    //     newContentView.webContents.openDevTools({ mode: 'detach' });
+
+    //     const html = await newContentView.webContents.executeJavaScript(`
+    //       new Promise((resolve) => {
+    //         console.log('calling interval')
+    //         const interval = setInterval(() => {
+    //           const el = document.querySelector('x9f619');
+    //           if (el) {
+    //             clearInterval(interval);
+    //             resolve(el.innerHTML);
+    //           }
+    //         }, 500);
+    //         setTimeout(() => {
+    //           clearInterval(interval);
+    //           resolve(null); // Timeout after 10s
+    //         }, 10000);
+    //       });
+    //     `);
+
+
+    //     if (html) {
+    //       //console.log('Hydrated HTML found:', html);
+    //     } else {
+    //       console.warn('Timed out waiting for #mount_0_0_kg');
+    //     }
+
+    //   } catch (err) {
+    //     console.error('Failed to scrape content:', err);
+    //   }
+
+    //   try {
+    //     const scrapedData = await newContentView.webContents.executeJavaScript(`
+    //       // Example: get the first post's text content
+    //       const post = document.getElementsByTagName('main')[0].innerText || 'No post found';
+    //       post;
+    //     `);
+        
+    //     //console.log('Scraped Instagram content:', scrapedData);
+    //   } catch (err) {
+    //     console.error('Failed to scrape content:', err);
+    //   }
+
+    //   const text = await newContentView.webContents.executeJavaScript(`
+    //     new Promise((resolve) => {
+    //       const check = () => {
+    //         const el = document.getElementsByTagName('main')[0];
+    //         if (el) {
+    //           resolve(el.innerText);
+    //         } else {
+    //           setTimeout(check, 300);
+    //         }
+    //       };
+    //       check();
+    //     });
+    //   `);
+
+    //   // console.log(text)
+    //   const lines = text.split('\n');
+    //   // console.log('this is it',lines)
+
+    //   const userData = {
+    //     username: lines[1],
+    //     posts: lines[4].split(' ')[0],
+    //     followers: lines[5].split(' ')[0],
+    //     following: lines[6].split(' ')[0],
+    //     fullName: lines[7]
+    //   };
+
+    //   console.log(userData);
+
+    //   resolve(newContentView);
+    // });
+
+    newContentView.webContents.on('did-finish-load', async () => {
+      if (bringToFront) {
+        showContent(newContentView)
+        saveTabs()
+      }
+
+      const text = await newContentView.webContents.executeJavaScript(`
+        new Promise((resolve) => {
+          const check = () => {
+            const el = document.getElementsByTagName('main')[0];
+            if (el) {
+              resolve(el.innerText);
+            } else {
+              setTimeout(check, 300);
+            }
+          };
+          check();
+        });
+      `);
+
+      const lines = text.split('\n');
+
+      if(lines.length > 0) {
+        const userData = {
+          username: lines[1],
+          posts: lines[4].split(' ')[0],
+          followers: lines[5].split(' ')[0],
+          following: lines[6].split(' ')[0],
+          fullName: lines[7]
+        };
+        console.log(userData)
+        newContentView.webContents.send('user-data', userData)
+      }
+
+      resolve(newContentView);
+    });
+
+    newContentView.webContents.on('did-fail-load', () => {
+      resolve(null)
+    })
+
+    newContentView.webContents.setWindowOpenHandler((details) => {
+      shell.openExternal(details.url)
+      return { action: 'deny' }
+    })
+
+    tabs.push(newContentView)
+    newContentView.webContents.loadURL(defaultUrl)
   })
 }
 

@@ -34,6 +34,11 @@ export interface TabsSlice {
        * Creates a new tab.
        */
       add: () => void;
+
+      /**
+       * Creates a new tab.
+       */
+      addScrapper: () => void;
   
       /**
        * Reorder tabs in the order of the given TabInfo array.

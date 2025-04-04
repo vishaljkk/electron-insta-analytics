@@ -18,6 +18,7 @@ export const useBoundStore = create(
         //? We need this otherwise action (functions inside the state) will be undefined.
         return merge({}, currentState, persistedState)
       },
+      // @ts-ignore
       partialize: (state) =>
         ({
           tabs: {}
