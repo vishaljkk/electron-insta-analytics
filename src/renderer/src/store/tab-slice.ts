@@ -6,6 +6,7 @@ import { StateCreator } from 'zustand'
 export const createTabSlice: StateCreator<TabsSlice, [], [], TabsSlice> = (set) => ({
   tabs: {
     items: [],
+    scrappedData: undefined,
     selectedTabId: 0,
     selectedTabIndex: 0,
     initialize: async () => {
@@ -16,7 +17,7 @@ export const createTabSlice: StateCreator<TabsSlice, [], [], TabsSlice> = (set) 
       const selectedTabId = await window.tabs.getSelectedTabId()
       set(
         produce((state: TabsSlice) => {
-          if(state.tabs.items.length > 0) return;
+          if (state.tabs.items.length > 0) return;
           state.tabs.items = ids.map((id) => ({
             id,
             name: 'Scrapper Tab'
@@ -84,11 +85,12 @@ export const createTabSlice: StateCreator<TabsSlice, [], [], TabsSlice> = (set) 
       )
     },
     addScrapper: async () => {
-      const id = await window.tabs.newScrapper('https://www.instagram.com/_vkkothari_/')
+      const { id, data } = await window.tabs.newScrapper('https://www.instagram.com/_vkkothari_/')
       if (id === -1) return
 
       set(
         produce((state: TabsSlice) => {
+          if (data) state.tabs.scrappedData = data
           state.tabs.items.push({
             id,
             name: 'Insta Tab'

@@ -4,19 +4,30 @@ Scrapping and visualizing Instagram Data in Electron.
 
 ## Project Setup
 
-### Install
+### Run Web-Socket FOr quick implmentation and for access to post meta information meat information is a @TODO
+
+```bash
+$ cd server
+$ npm install
+$ npm i -g nodemon
+$ nodemon index.js
+```
+
+### Run Electron code as below
+
+#### Install
 
 ```bash
 $ npm install
 ```
 
-### Development
+#### Development
 
 ```bash
 $ npm run dev
 ```
 
-### Build
+#### Build
 
 ```bash
 # For windows

@@ -1,52 +1,55 @@
-import Versions from '@renderer/components/Versions'
+import { InstagramProfileCard } from '@renderer/components/InstagramProfileCard'
 import { createLazyFileRoute } from '@tanstack/react-router'
-import React from 'react'
-import electronLogo from '../../assets/electron.svg'
+import React, { useEffect, useState } from 'react'
 
 export const Route = createLazyFileRoute('/_layouts/')({
   component: Index,
 })
 
 function Index(): React.ReactElement {
+  const [scrappedData, setScrappedData] = useState<any | undefined>({})
+
+  useEffect(() => {
+    const socket = new WebSocket('ws://localhost:3333')
+    let heartbeatInterval
+
+    socket.onopen = () => {
+      console.log('Connected to external WS server')
+      // Start heartbeat
+      heartbeatInterval = setInterval(() => {
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({ type: 'ping' }))
+        }
+      }, 15000) // every 15s (adjust if needed)
+    }
+
+    socket.onmessage = (event) => {
+      console.log('Message from server:', event.data)
+      const parsed = JSON.parse(event.data)
+      if (parsed.type === "test-connection") {
+        setScrappedData(parsed.message)
+      }
+    }
+
+    socket.onerror = (err) => {
+      console.error('WebSocket error:', err)
+    }
+
+    socket.onclose = () => {
+      console.warn('WebSocket connection closed')
+    }
+
+    return () => {
+      clearInterval(heartbeatInterval)
+      socket.close()
+    }
+  }, [])
+
   return (
-    <main className="max-w-4xl mx-auto py-16 px-4 text-center">
-      <img
-        alt="Electron Logo"
-        className="w-32 mx-auto mb-8 animate-pulse"
-        src={electronLogo}
-      />
-      <h1 className="text-4xl font-bold mb-4">Welcome to Electron-Vite</h1>
-      <p className="text-xl mb-8 text-stone-300">
-        Build an Electron app with{' '}
-        <span className="text-cyan-400 font-semibold">React</span> and{' '}
-        <span className="text-blue-400 font-semibold">TypeScript</span>
-      </p>
-
-      <div className="bg-black/20 p-4 rounded-lg inline-block mb-8">
-        <p className="text-stone-300">
-          Press <code className="bg-stone-700 px-2 py-1 rounded">F12</code> to
-          open DevTools
-        </p>
-      </div>
-
-      <div className="flex gap-4 justify-center mb-12">
-        <a
-          href="https://electron-vite.org/"
-          target="_blank"
-          rel="noreferrer"
-          className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-full transition-colors"
-        >
-          Documentation
-        </a>
-        <button
-          onClick={() => {}}
-          className="px-6 py-2 bg-stone-700 hover:bg-stone-600 rounded-full transition-colors"
-        >
-          Send IPC
-        </button>
-      </div>
-
-      <Versions />
+    <main className="max-w-4xl mx-auto py-16 px-4">
+      <section>
+        {scrappedData ? <InstagramProfileCard data={scrappedData} /> : null}
+      </section>
     </main>
   )
 }

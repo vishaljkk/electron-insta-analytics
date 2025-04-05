@@ -17,7 +17,6 @@ let tabExists = false; // Flag to track if a tab is already created
 export async function addNewTab() {
   if (tabExists) {
     tabExists = true
-    //console.log("A tab already exists. New tabs are not allowed.");
     return;
   }
   const mainWindow = getBaseWindow()
@@ -42,9 +41,9 @@ export async function addNewScrapper(defaultUrl) {
   }
 
   // load new content here
-  const newTab = await loadScrappedContent(NavigationRoutes.root, { bringToFront: true }, defaultUrl)
-  if (newTab === null) return -1
-  return newTab.webContents.id
+  const response = await loadScrappedContent(NavigationRoutes.root, { bringToFront: true }, defaultUrl)
+  if (response === null) return -1
+  return { id: response.webContents.webContents.id, data: response.data }
 }
 
 /**
@@ -69,14 +68,17 @@ export function loadTabContent(
 
     newContentView.setBackgroundColor('#292524')
 
-    newContentView.webContents.on('did-finish-load', () => {
+    newContentView.webContents.once('did-finish-load', () => {
+      console.info('WebContents finished loading');
+
       if (bringToFront) {
-        showContent(newContentView)
-        saveTabs()
+        showContent(newContentView);
+        saveTabs();
       }
-      // newContentView.webContents.openDevTools({ mode: 'detach' });
-      resolve(newContentView)
-    })
+
+      newContentView.webContents.openDevTools({ mode: 'detach' });
+      resolve(newContentView);
+    });
 
     newContentView.webContents.on('did-fail-load', () => {
       resolve(null)
@@ -96,7 +98,7 @@ export function loadTabContent(
 export function loadScrappedContent(
   _path: string,
   { bringToFront = false }: { bringToFront?: boolean } = {}, defaultUrl
-): Promise<WebContentsView | null> {
+): Promise<{webContents: WebContentsView, data: any} | null> {
   return new Promise((resolve) => {
     const baseWindow = getBaseWindow()
     if (baseWindow === null) return resolve(null)
@@ -109,132 +111,184 @@ export function loadScrappedContent(
 
     newContentView.setBackgroundColor('#292524')
 
-    // newContentView.webContents.on('did-finish-load', () => {
-    //   if (bringToFront) {
-    //     showContent(newContentView)
-    //     saveTabs()
-    //   }
-    //   resolve(newContentView)
-    // })
-
-    // newContentView.webContents.on('did-finish-load', async () => {
-    //   if (bringToFront) {
-    //     showContent(newContentView)
-    //     saveTabs()
-    //   }
-
-
-
-    //   // Try scraping data from the loaded page
-    //   try {
-    //     newContentView.webContents.openDevTools({ mode: 'detach' });
-
-    //     const html = await newContentView.webContents.executeJavaScript(`
-    //       new Promise((resolve) => {
-    //         console.log('calling interval')
-    //         const interval = setInterval(() => {
-    //           const el = document.querySelector('x9f619');
-    //           if (el) {
-    //             clearInterval(interval);
-    //             resolve(el.innerHTML);
-    //           }
-    //         }, 500);
-    //         setTimeout(() => {
-    //           clearInterval(interval);
-    //           resolve(null); // Timeout after 10s
-    //         }, 10000);
-    //       });
-    //     `);
-
-
-    //     if (html) {
-    //       //console.log('Hydrated HTML found:', html);
-    //     } else {
-    //       console.warn('Timed out waiting for #mount_0_0_kg');
-    //     }
-
-    //   } catch (err) {
-    //     console.error('Failed to scrape content:', err);
-    //   }
-
-    //   try {
-    //     const scrapedData = await newContentView.webContents.executeJavaScript(`
-    //       // Example: get the first post's text content
-    //       const post = document.getElementsByTagName('main')[0].innerText || 'No post found';
-    //       post;
-    //     `);
-        
-    //     //console.log('Scraped Instagram content:', scrapedData);
-    //   } catch (err) {
-    //     console.error('Failed to scrape content:', err);
-    //   }
-
-    //   const text = await newContentView.webContents.executeJavaScript(`
-    //     new Promise((resolve) => {
-    //       const check = () => {
-    //         const el = document.getElementsByTagName('main')[0];
-    //         if (el) {
-    //           resolve(el.innerText);
-    //         } else {
-    //           setTimeout(check, 300);
-    //         }
-    //       };
-    //       check();
-    //     });
-    //   `);
-
-    //   // console.log(text)
-    //   const lines = text.split('\n');
-    //   // console.log('this is it',lines)
-
-    //   const userData = {
-    //     username: lines[1],
-    //     posts: lines[4].split(' ')[0],
-    //     followers: lines[5].split(' ')[0],
-    //     following: lines[6].split(' ')[0],
-    //     fullName: lines[7]
-    //   };
-
-    //   console.log(userData);
-
-    //   resolve(newContentView);
-    // });
-
     newContentView.webContents.on('did-finish-load', async () => {
       if (bringToFront) {
         showContent(newContentView)
         saveTabs()
       }
 
-      const text = await newContentView.webContents.executeJavaScript(`
-        new Promise((resolve) => {
-          const check = () => {
-            const el = document.getElementsByTagName('main')[0];
-            if (el) {
-              resolve(el.innerText);
-            } else {
-              setTimeout(check, 300);
-            }
-          };
-          check();
-        });
-      `);
+      // async function extractInstagramData(newContentView) {
+      //   const data = await newContentView.webContents.executeJavaScript(`
+      //     new Promise((resolve) => {
+      //       const check = () => {
+      //         const main = document.querySelector('main');
+      //         if (!main) {
+      //           setTimeout(check, 300);
+      //           return;
+      //         }
 
-      const lines = text.split('\n');
+      //         const getTextContent = (selector) => {
+      //           const el = document.querySelector(selector);
+      //           return el ? el.textContent.trim() : null;
+      //         };
 
-      if(lines.length > 0) {
-        const userData = {
-          username: lines[1],
-          posts: lines[4].split(' ')[0],
-          followers: lines[5].split(' ')[0],
-          following: lines[6].split(' ')[0],
-          fullName: lines[7]
-        };
-        console.log(userData)
-        newContentView.webContents.send('user-data', userData)
+      //         const getNumberFromUl = (index) => {
+      //           const ul = document.querySelector('ul[class*="x78zum5"]');
+      //           if (ul && ul.children[index]) {
+      //             const numberSpan = ul.children[index].querySelector('span span');
+      //             return numberSpan ? parseInt(numberSpan.textContent.replace(/,/g, '')) : null;
+      //           }
+      //           return null;
+      //         };
+
+      //         const handle = getTextContent('span.x1lliihq.x193iq5w.x6ikm8r.x10wlt62.xlyipyv.xuxw1ft');
+
+      //         const fullNameContainer = document.querySelector('div.x9f619.xjbqb8w.x168nmei.x13lgxp2.x5pf9jr.xo71vjh.x1uhb9sk.x1plvlek.xryxfnj.x1c4vz4f.x2lah0s.x1q0g3np.xqjyukv.x1oa3qoh.x6s0dn4.x1amjocr.x78zum5.xl56j7k');
+      //         const fullName = fullNameContainer ? fullNameContainer.querySelector('span')?.textContent.trim() : null;
+
+      //         const posts = getNumberFromUl(0);
+      //         const followers = getNumberFromUl(1);
+      //         const following = getNumberFromUl(2);
+
+      //         // ⬇️ Get all spans with the 'html-span' class and extract their text
+      //         const htmlSpanTexts = Array.from(document.querySelectorAll('span.html-span')).map(el => el.textContent.trim());
+
+      //         resolve({
+      //           handle,
+      //           fullName,
+      //           posts,
+      //           followers,
+      //           following,
+      //           htmlSpanTexts
+      //         });
+      //       };
+
+      //       check();
+      //     });
+      //   `);
+
+      //   return data;
+      // }
+
+      async function extractInstagramData(newContentView) {
+        const data = await newContentView.webContents.executeJavaScript(`
+          new Promise((resolve) => {
+            const waitForElement = (selector, timeout = 7000) => {
+              return new Promise((res) => {
+                const start = Date.now();
+                const check = () => {
+                  const el = document.querySelector(selector);
+                  if (el) return res(el);
+                  if (Date.now() - start > timeout) return res(null);
+                  setTimeout(check, 300);
+                };
+                check();
+              });
+            };
+
+            const check = async () => {
+              const main = await waitForElement('main');
+              if (!main) {
+                return resolve({ error: 'Main not found' });
+              }
+
+              const getTextContent = (selector) => {
+                const el = document.querySelector(selector);
+                return el ? el.textContent.trim() : null;
+              };
+
+              const getNumberFromUl = (index) => {
+                const ul = document.querySelector('ul[class*="x78zum5"]');
+                if (ul && ul.children[index]) {
+                  const numberSpan = ul.children[index].querySelector('span span');
+                  return numberSpan ? parseInt(numberSpan.textContent.replace(/,/g, '')) : null;
+                }
+                return null;
+              };
+
+              const handle = getTextContent('span.x1lliihq.x193iq5w.x6ikm8r.x10wlt62.xlyipyv.xuxw1ft');
+
+              const fullNameContainer = document.querySelector('div.x9f619.xjbqb8w.x168nmei.x13lgxp2.x5pf9jr.xo71vjh.x1uhb9sk.x1plvlek.xryxfnj.x1c4vz4f.x2lah0s.x1q0g3np.xqjyukv.x1oa3qoh.x6s0dn4.x1amjocr.x78zum5.xl56j7k');
+              const fullName = fullNameContainer ? fullNameContainer.querySelector('span')?.textContent.trim() : null;
+
+              const posts = getNumberFromUl(0);
+              const followers = getNumberFromUl(1);
+              const following = getNumberFromUl(2);
+
+              // Wait for views container
+              await waitForElement('div.x6s0dn4.x1w9h7q7.x78zum5.x1pg5gke.x1s688f.xl56j7k.x1r0g7yl.x2b8uid.xtvhhri.x5ur3kl.x13fuv20.x178xt8z');
+
+              await waitForElement('div._ac7v.xat24cr.x1f01sob.xcghwft.xzboxd6')
+
+              await waitForElement('div._aagu')
+
+              // Get anchor tags that are post thumbnails (strict class match)
+              const postAnchors = Array.from(document.querySelectorAll('a.x1i10hfl.xjbqb8w.x1ejq31n.xd10rxx.x1sy0etr.x17r0tee.x972fbf.xcfux6l.x1qhh985.xm0m39n.x9f619.x1ypdohk.xt0psk2.xe8uvvx.xdj266r.x11i5rnm.xat24cr.x1mh8g0r.xexx8yu.x4uap5.x18d9i69.xkhd6sd.x16tdsg8.x1hl2dhg.xggy1nq.x1a2a7pz._a6hd'));
+              const postLinks = postAnchors.map(a => a.href);
+
+              resolve({
+                handle,
+                fullName,
+                posts,
+                followers,
+                following,
+                postLinks,
+              });
+            };
+
+            check();
+          });
+        `);
+
+        return data;
       }
 
-      resolve(newContentView);
+
+
+
+      // async function extractInstagramDom(newContentView) {
+      //   const data = await newContentView.webContents.executeJavaScript(`
+      //     new Promise((resolve) => {
+      //       const check = () => {
+      //         const main = document.querySelector('main');
+      //         if (!main) {
+      //           setTimeout(check, 300);
+      //           return;
+      //         }
+
+      //         // Get the outer HTML of the main content area
+      //         const domTree = main.outerHTML;
+
+      //         resolve({
+      //           domTree
+      //         });
+      //       };
+
+      //       check();
+      //     });
+      //   `);
+
+      //   return data;
+      // }
+
+      const scrapedData = await extractInstagramData(newContentView);
+      console.log(scrapedData);
+      // const scrapedDom = await extractInstagramDom(newContentView)
+
+      // const text = await newContentView.webContents.executeJavaScript(`
+      //   new Promise((resolve) => {
+      //     const check = () => {
+      //       const el = document.getElementsByTagName('main')[0];
+      //       if (el) {
+      //         resolve(el.innerText);
+      //       } else {
+      //         setTimeout(check, 300);
+      //       }
+      //     };
+      //     check();
+      //   });
+      // `);
+      resolve({webContents: newContentView, data: scrapedData});
     });
 
     newContentView.webContents.on('did-fail-load', () => {
@@ -459,13 +513,13 @@ export function saveTabs() {
 }
 
 /**
- * Restores tabs from the previous session.
+ * Restores tabs from the previous session, or loads the root tab if restore is disabled.
  * @param options Optional configuration object
  * @param options.restore Whether to restore previous session tabs (default: true)
  * @returns Promise resolving to the selected tab's WebContentsView or null
  */
 export async function restoreTabs({
-  restore = true
+  restore = false
 }: {
   restore?: boolean
 } = {}): Promise<WebContentsView | null> {
@@ -473,10 +527,10 @@ export async function restoreTabs({
     return loadTabContent(NavigationRoutes.root)
   }
 
-  let lastSessionTabs = getTabs()
+  const lastSessionTabs = getTabs()
   let selectedTabIndex = getSelected()
 
-  if (lastSessionTabs !== null && lastSessionTabs.length > 0) {
+  if (lastSessionTabs && lastSessionTabs.length > 0) {
     if (selectedTabIndex < 0 || selectedTabIndex >= lastSessionTabs.length) {
       selectedTabIndex = 0
     }
@@ -484,13 +538,13 @@ export async function restoreTabs({
     for (let i = 0; i < lastSessionTabs.length; i++) {
       if (i === selectedTabIndex) {
         selectedTab = await loadTabContent(lastSessionTabs[i])
-        continue
+      } else {
+        loadTabContent(lastSessionTabs[i])
       }
-      loadTabContent(lastSessionTabs[i])
     }
   }
 
-  if (selectedTab === null) {
+  if (!selectedTab) {
     selectedTab = await loadTabContent(NavigationRoutes.root)
   }
 

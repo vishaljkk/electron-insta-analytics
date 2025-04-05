@@ -1,8 +1,7 @@
 import { useBoundStore } from '@renderer/store/useBoundStore'
 import { AnimatePresence, Reorder } from 'framer-motion'
-//import { AnimatePresence, motion, Reorder } from 'framer-motion'
-//import { MdAdd } from 'react-icons/md'
 import { Tab } from './Tab'
+import { useEffect } from 'react'
 
 export default function TabBar() {
   const tabs = useBoundStore((state) => state.tabs.items)
@@ -11,7 +10,29 @@ export default function TabBar() {
   const setTabs = useBoundStore((state) => state.tabs.reorder)
   const selectedTab = useBoundStore((state) => state.tabs.selectedTabId)
   const selectedTabIndex = useBoundStore((state) => state.tabs.selectedTabIndex)
-  
+  const scrappedData = useBoundStore((state) => state.tabs.scrappedData)
+
+  useEffect(() => {
+    const socket = new WebSocket('ws://localhost:3333')
+    socket.onopen = () => {
+      if (!scrappedData) return;
+      const payload = {
+        type: 'test-connection',
+        message: scrappedData
+      }
+      socket.send(JSON.stringify(payload))
+    }
+    socket.onerror = (err) => {
+      console.error('[WebSocket] Error:', err)
+    }
+    socket.onclose = () => {
+      console.log('[WebSocket] Closed')
+    }
+    return () => {
+      socket.close()
+    }
+  }, [scrappedData])
+
   return (
     <div className="flex flex-row w-full flex-grow">
       <Reorder.Group
@@ -33,23 +54,15 @@ export default function TabBar() {
           /> : null}
           {tabs.map((item, index) => (
             item.name === "Insta Tab" ?
-            <Tab
-              key={item.id}
-              item={item}
-              isSelected={selectedTab === item.id}
-              onClick={() => setSelectedTab(item)}
-              onRemove={() => remove(item)}
-              showSeparator={index !== selectedTabIndex - 1 && tabs.length > 2}
-            />: null       
+              <Tab
+                key={item.id}
+                item={item}
+                isSelected={selectedTab === item.id}
+                onClick={() => setSelectedTab(item)}
+                onRemove={() => remove(item)}
+                showSeparator={index !== selectedTabIndex - 1 && tabs.length > 2}
+              /> : null
           ))}
-          {/* <motion.button
-            className="titlebar-button flex items-center justify-center hover:bg-white/5
-              rounded-full h-6 w-6  transition-all duration-300 ml-2"
-            onClick={add}
-            whileTap={{ scale: 0.9 }}
-          >
-            <MdAdd className="opacity-55 hover:opacity-100 transition-all text-white duration-300" />
-          </motion.button> */}
         </AnimatePresence>
       </Reorder.Group>
     </div>

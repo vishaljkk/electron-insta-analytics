@@ -4,7 +4,11 @@ export interface TabsSlice {
        * Array of active tabs.
        */
       items: TabInfo[];
-  
+
+      /**
+       * @TODO incompleteScrapped Data via Store
+       */
+      scrappedData?: any;
       /**
        * Focused tab id.
        */

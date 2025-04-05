@@ -43,7 +43,6 @@ export async function initializeMainWindow() {
 
   showContent(mainContent)
   mainContent.webContents.focus()
-  mainContent.webContents.openDevTools({ mode: 'detach' }) // or 'bottom' | 'undocked'
 
   showWindow()
 }
